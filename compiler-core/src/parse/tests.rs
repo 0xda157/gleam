@@ -354,6 +354,40 @@ fn triple_equals_with_whitespace() {
     );
 }
 
+#[test]
+fn merge_conflict_equals() {
+    assert_error!(
+        "let foo = 32
+        =======",
+        ParseError {
+            error: ParseErrorType::LexError {
+                error: LexicalError {
+                    error: LexicalErrorType::MergeConflictIndicator,
+                    location: SrcSpan { start: 0, end: 0 },
+                },
+            },
+            location: SrcSpan { start: 0, end: 0 },
+        }
+    );
+}
+
+#[test]
+fn merge_conflict_left() {
+    assert_error!(
+        "let foo = 32
+        <<<<<<< HEAD",
+        ParseError {
+            error: ParseErrorType::LexError {
+                error: LexicalError {
+                    error: LexicalErrorType::MergeConflictIndicator,
+                    location: SrcSpan { start: 0, end: 0 },
+                },
+            },
+            location: SrcSpan { start: 0, end: 0 },
+        }
+    );
+}
+
 // https://github.com/gleam-lang/gleam/issues/1231
 #[test]
 fn pointless_spread() {

@@ -200,6 +200,19 @@ where
                         let _ = self.next_char();
                         let tok_end = self.get_pos();
                         if let Some('=') = self.chr0 {
+                            if !self.pending.is_empty()
+                                && self.pending[self.pending.len() - 1].1 == Token::NewLine
+                                && Some('=') == self.chr1
+                                && self.is_merge_conflict_indicator('=', 3)
+                            {
+                                return Err(LexicalError {
+                                    error: LexicalErrorType::MergeConflictIndicator,
+                                    location: SrcSpan {
+                                        start: tok_start,
+                                        end: self.get_pos(),
+                                    },
+                                });
+                            }
                             return Err(LexicalError {
                                 error: LexicalErrorType::InvalidTripleEqual,
                                 location: SrcSpan {
@@ -364,6 +377,19 @@ where
                     Some('<') => {
                         let _ = self.next_char();
                         let tok_end = self.get_pos();
+                        if !self.pending.is_empty()
+                            && self.pending[self.pending.len() - 1].1 == Token::NewLine
+                            && Some('<') == self.chr0
+                            && self.is_merge_conflict_indicator('<', 2)
+                        {
+                            return Err(LexicalError {
+                                error: LexicalErrorType::MergeConflictIndicator,
+                                location: SrcSpan {
+                                    start: tok_start,
+                                    end: self.get_pos(),
+                                },
+                            });
+                        }
                         self.emit((tok_start, Token::LtLt, tok_end));
                     }
                     Some('.') => {
@@ -403,6 +429,19 @@ where
                     Some('>') => {
                         let _ = self.next_char();
                         let tok_end = self.get_pos();
+                        if !self.pending.is_empty()
+                            && self.pending[self.pending.len() - 1].1 == Token::NewLine
+                            && Some('>') == self.chr0
+                            && self.is_merge_conflict_indicator('>', 2)
+                        {
+                            return Err(LexicalError {
+                                error: LexicalErrorType::MergeConflictIndicator,
+                                location: SrcSpan {
+                                    start: tok_start,
+                                    end: self.get_pos(),
+                                },
+                            });
+                        }
                         self.emit((tok_start, Token::GtGt, tok_end));
                     }
                     Some('.') => {
@@ -1284,6 +1323,24 @@ where
         self.chr0
             .map(|c| matches!(c, '_' | '0'..='9' | 'a'..='z' | 'A'..='Z'))
             .unwrap_or(false)
+    }
+
+    fn is_merge_conflict_indicator(&mut self, kind: char, mut seen: usize) -> bool {
+        while seen < 7 {
+            if self.chr0 != Some(kind) {
+                return false;
+            }
+
+            seen += 1;
+            let _ = self.next_char();
+        }
+
+        // merge conflict indicators span the entire line, so consume until the next newline.
+        while self.chr1.is_some() && self.chr1 != Some('\n') {
+            let _ = self.next_char();
+        }
+
+        return true;
     }
 
     // advance the stream and emit a token
